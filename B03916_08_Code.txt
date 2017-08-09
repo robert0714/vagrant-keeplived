@@ -1,0 +1,112 @@
+8. Failure Scenario and Disaster Recovery
+
+We are going to learn following topics in this chapter 
+•	Network Partition Split Brain 
+•	Automatic Failover
+•	Geo Replication
+-------------------------------------------------------------------------------
+Network Partition Split Brain 
+-------------------------------------------------------------------------------------
+Setting Server-side Quorum
+The quorum enablement on a particular volume to participate in the sever quorum as follows
+| sudo gluster volume set VOLNAME cluster.server-quorum-type server
+. 
+| sudo gluster volume set all cluster.server-quorum-ratio 51%
+
+| sudo gluster volume set VOLNAME quorum-type auto
+Real time failure scenario of Split Brain
+
+kernel: block drbd0: Split-Brain detected, dropping connection!
+
+# sudo  gluster volume set VOLNAME quorum-type auto~$
+kernel: block drbd0: Split-Brain detected, dropping connection!
+
+
+Steps to Resolve Split Brain 
+
+Following are the steps to resolve split brain
+Choosing of Split-brain Victim 
+
+| victim# drbdadm secondary resource
+If the resource is in connection state WFConnection , disconnect with the following command.
+| victim# drbdadm disconnect resource
+
+ Force Discard on victim 
+Force discard must be done on all modifications on all the victims as follows. 
+| victim# drbdadm -- --discard-my-data connect resource
+
+ Resynchronization
+| survivor# drbdadm connect resource
+
+-----------------------------------------------------------------------------------------
+ Automatic Failover
+-------------------------------------------------------------------------------------------
+LBaaS 
+/var/lib /neutron /lbaas/ 
+
+Working of Failover
+
+| sudo l3 agent failover
+
+Get all failed routers
+| sudo neutron router-list-on-l3-agent
+
+
+| sudo neutron agent-list | grep L3
+
+
+LBaaS agent failover
+For example
+
+#bad agent id: c784b7fb-8094-4d3b-a8b1-804d90a80784
+#good agent id: 7e7700a3-02b2-4bd3-9c45-eca938c3f975
+
+#update poolloadbalanceragentbindings set agent_id=’7e7700a3-02b2-4bd3-9c45-eca938c3f975’ where agent_id=’c784b7fb-8094-4d3b-a8b1-804d90a80784’;
+
+-------------------------------------------------------------------------------------------------
+Geo-Replication
+------------------------------------------------------------------------------------------------------
+Creating Geo-replication Sessions
+#gluster system:: execute gsec_create
+
+ Create the geo-replication session using the following command. 
+ # gluster volume geo-replication MASTER_VOL SLAVE_HOST::SLAVE_VOL create push-pem [force]
+
+# gluster volume geo-replication master-vol example.com::slave-vol create push-pem
+
+# gluster volume geo-replication MASTER_VOL SLAVE_HOST::SLAVE_VOL status
+Starting Geo-replication
+To start geo-replication, use one of the following commands and as an initial step we need to start geo-replication session between the hosts:
+# gluster volume geo-replication 
+For example:
+#gluster volume geo-replication master-vol example.com::slave-vol start
+# gluster volume geo
+For example, type the following command 
+# gluster volume geo-replication master-vol example.com::slave-vol start force
+Verifying a Successful Geo-replication Deployment
+# gluster volume geo-replication MASTER_VOL SLAVE_HOST::SLAVE_VOL status
+For example, type the following command 
+# gluster volume geo-replication master-vol example.com::slave-vol status
+Real time Failure Scenario
+Issues in Master Log File
+To get the Master-log-file for geo-replication, use the following command:
+# gluster volume geo-replication <MASTER> <SLAVE> config log-file
+
+For example, type the command 
+# gluster volume geo-replication Volume1 example.com:/data/remote_dir config log-file
+
+Slave Log File
+•	On master, run the following command
+| #gluster volume geo-replication Volume1 example.com:/data/remote_dir config session-owner 
+5f6e5200-756f-11e0-a1f0-0800200c9a66
+
+•	On slave, run the following command: 
+
+To display the session owner details 
+
+# gluster volume geo-replication /data/remote_dir config log-file 
+
+/var/log/gluster/${session-owner}:remote-dir.log
+
+Replace the session owner details (output of Step a) to the output of the Step b to get the location of the log file. 
+/var/log/gluster/5f6e5200-756f-11e0-a1f0-0800200c9a66:remote-dir.log

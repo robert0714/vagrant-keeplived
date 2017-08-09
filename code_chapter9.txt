@@ -1,0 +1,87 @@
+9
+Principles of design for highly available applications
+
+
+•	Principles of design features
+•	Sample application deployment 
+•	Interaction of application with openstack
+
+--------------------------------------------------------------------------------------
+Interaction of application with openstack
+-------------------------------------------------------------------------
+
+Choose the OpenStack SDK 
+
+Flavors and Images 
+We have to choose the flavor and type of images that are used to create an instance on which our fractal application is running. The flavors are used to fix the size of an instance, which comprises of number of VCPU, RAM capacity and Hard Disk capacity. 
+<NodeImage: id=2cccbea0-cea9-4f86-a3ed-065c652adda5, name=ubuntu-14.04, driver=OpenStack  ...>
+<NodeImage: id=f2a8dadc-7c7b-498f-996a-b5272c715e55, name=cirros-0.3.3-x86_64, driver=OpenStack  ...>
+
+
+
+<OpenStackNodeSize: id=1, name=m1.tiny, ram=512, disk=1, bandwidth=None, price=0.0, driver=OpenStack, vcpus=1,  ...>
+<OpenStackNodeSize: id=2, name=m1.small, ram=2048, disk=20, bandwidth=None, price=0.0, driver=OpenStack, vcpus=1,  ...>
+<OpenStackNodeSize: id=3, name=m1.medium, ram=4096, disk=40, bandwidth=None, price=0.0, driver=OpenStack, vcpus=2,  ...>
+
+Launch an Instance 
+
+<Node: uuid=1242d56cac5bcd4c110c60d57ccdbff086515133, name=testing, 
+state=RUNNING, public_ips=[], private_ips=[], provider=OpenStack ...>
+
+
+Destroy an Instance
+conn.destroy_node (testing_instance)
+
+
+ Deploy the Application to a new Instance
+print('Checking for existing SSH key pair...')
+keypair_name = 'demokey'
+pub_key_file = '~/.ssh/id_rsa.pub'
+
+if security_group_exists:
+    print('Security Group ' + all_in_one_security_group.name + ' already exists. Skipping creation.')
+else:
+    all_in_one_security_group = conn.ex_create_security_group(security_group_name, 'network access for all-in-one application.')
+    conn.ex_create_security_group_rule(all_in_one_security_group, 'TCP', 80, 80)
+    conn.ex_create_security_group_rule(all_in_one_security_group, 'TCP', 22, 22)
+
+userdata = '''#!/usr/bin/env bash
+curl -L -s https://git.openstack.org/cgit/stackforge/faafo/plain/contrib/install.sh | bash -s -- \
+    -i faafo -i messaging -r api -r worker -r demo
+'''
+
+ Boot and configure an Instance
+if instance_exists:
+    print('Instance ' + testing_instance.name + ' already exists. Skipping creation.')
+else:
+    testing_instance = conn.create_node(name=instance_name,  image=image,
+                                        size=flavor, ex_keyname=keypair_name,
+                                        ex_userdata=userdata,                                        ex_security_groups=[all_in_one_security_group])
+    conn.wait_until_running([testing_instance])
+
+Associate a Floating IP for External Connectivity
+print('Checking for unused Floating IP...')
+unused_floating_ip = None
+for floating_ip in conn.ex_list_floating_ips():
+    if floating_ip.node_id:
+        unused_floating_ip = floating_ip
+        break
+
+<OpenStack_1_1_FloatingIpAddress: id=4536ed1e-4374-4d7f-b02c-c3be2cb09b67, ip_addr=203.0.113.101, pool=<OpenStack_1_1_FloatingIpPool: name=floating001>, driver=<libcloud.compute.drivers.openstack.OpenStack_1_1_NodeDriver object at 0x1310b50>>
+
+Then we attach this IP to an instance as follows.
+if len(testing_instance.public_ips) > 0:
+    print('Instance ' + testing_instance.name + ' already has a public ip. Skipping attachment.')
+else:
+    conn.ex_attach_floating_ip_to_node(testing_instance, unused_floating_ip)
+
+
+Access the Application
+print('The Fractals app will be deployed to http://%s' % unused_floating_ip.ip_address)
+
+If we need to login to the instance via SSH, we have to get the key pair as follows.
+
+$ ssh -i ~/.ssh/id_rsa USERNAME@IP_WORKER_1
+
+
+

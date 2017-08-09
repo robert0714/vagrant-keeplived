@@ -1,0 +1,374 @@
+
+5.  Highly available OpenStack services
+
+
+
+
+•	High availability compute Services
+•	High availability dashboard Services
+•	High availability object Storage Services
+•	High availability image Services
+•	Load balancing of HTTP REST API
+
+
+
+---------------------------------------------------
+High Availability Compute Services
+------------------------------------------------------
+In the previous chapters we are utilizing a two node cluster named as controller_1 (192.168.56.101) and controller_2 (192.168.56.102). For High availability compute services, we need to add Nova on both the nodes as follows.
+Installation of Nova Packages
+As an initial step of installation, we need to install all the nova related packages in a single command 
+sudo apt-get install nova-api nova-cert nova-conductor nova-consoleauth nova-novncproxy nova-scheduler python-novaclient
+
+Configuration of Nova    
+Modify the nova.conf file under /etc/nova using any of the editors such as vi, nano or edit with the command
+sudo  gedit  /etc/nova/nova.conf
+
+Then add the following settings as specified in the following nova.conf file
+
+we need to assign the controller_1 ip address to the my_ip and vncserver_listen. We need to assign the controller_2 ip address to the my_ip and vncserver_listen on the controller_2.The rabbit_hosts points to the both the controller_1 and controller_2. Reaming IP address are pointing to the load balancing virtual IP, in our case VIP is points to 192.168.1.32.
+Nova Database Creation
+Connect to the local mysql database using following command
+mysql -h 192.168.1.32 -u root –p
+
+
+Create a Nova Database using following command 
+
+create database nova;
+
+Grant all privileges to the database that we have created with following command 
+
+grant all on nova.* to nova@'%' identified by 'Service123';
+
+Exit from the mysql using following command 
+
+exit    
+Population of database 
+The fresh databases are populated on any one of the nodes (in our case we populate the database available on the controller_1) with following command 
+nova-manage db sync
+
+Then we restart all the nova services as follows.
+
+service nova-api restart
+service nova-cert restart
+service nova-consoleauth restart
+service nova-scheduler restart
+service nova-conductor restart
+service nova-novncproxy restart
+
+
+Load balancing of Compute services
+
+For the compute services to be load balanced, we need to edit the haproxy.cfg by adding the below lines of code as follows on both the controller_1 and controller_2.
+To edit the haproxy.cfg file under /etc/haproxy/ we use following command
+
+sudo gedit /etc/haproxy/haproxy.cfg 
+
+Make the changes according to the following file 
+Reload HAproxy services 
+Finally, we need to reconfigure the  haproxy services using following command
+service haproxy reload
+
+Then check for high available nova services by source our credentials using following command
+source credentials
+
+nova image-list 
+
+---------------------------------------------------------------------------
+High Availability Dashboard Services
+---------------------------------------------------------------------------
+This high available dashboard service called Horizon is used to implement a web based dashboard interface for all the OpenStack services including Swift, Cinder, Keystone and Nova etc.
+Installation of dashboard
+ As an initial step of dashboard installation, we need to install the complete package of dashboard services using following command 
+
+sudo apt-get install apache2 memcached libapache2-mod-wsgi openstack-dashboard
+
+
+Configuration of local dashboard
+
+Then we need to edit the local_settings.py file under /etc/openstack-dashboard/ using any one of the editors as follows 
+sudo gedit  /etc/openstack-dashboard/local_settings.py
+
+Then change the OPENSTACK_HOST ip address into our own virtual IP (VIP) (192.168.1.32) as follows 
+Configuration of Memcache
+Then we need to edit the memcached.conf file under /etc/ using any one of the editors as follows
+sudo gedit /etc/memcached.conf
+
+Then we need to change the listening address from 127.0.0.1 to the address of the 192.168.56.101 on controller_1 and 192.168.56.102 on controller_2. 
+Restart the memcache services
+
+To made all the above changes in memcahe, we need to restart the services using following command 
+
+service apache2 restart
+
+
+service memcached restart
+
+
+Load balancing of Dashboard services
+Finally, haproxy load balancers need some modification in the haproxy.cong file under /etc/haproxy/haproxy.cfg as follows
+
+sudo gedit /etc/haproxy/haproxy.cfg
+
+
+
+Made the following changes in the haproxy file 
+Reload HAproxy services
+Finally, we need to reconfigure the HAproxy services using following command 
+service haproxy reload
+
+Then we can open our dashboard (Horizon) using the URL: http://192.168.1.32/horizon and login with admin as a username and password as password
+
+
+----------------------------------------------------------------------------
+High Availability Object Storage Services
+-------------------------------------------------------------------------------
+The High Availability object storage services are offering a facility of store and retrieve the data with the simple API. We can scale and optimize these services for concurrency, availability and durability for the entire data set. Then this swift service is acting as a backing storage of the high availability glance services. 
+Installation of Object Storage
+First, we install all the required packages for this object storage using a command
+sudo apt-get install swift swift-account swift-container swift-object xfsprogs
+
+
+Creation of object store Configuration
+
+After installation of the above packages, we must create swift configuration file for the object storage, where we have to define a hash for all these swift servers uniquely. The files in all the servers must match with a file copied in all the servers.
+To configure the file, we must use following command
+
+sudo gedit /etc/swift/swift.conf
+
+
+Then make the changes in the above file as follows
+ Creation of Disk partition
+Then we have to create a disk partition for swift storage then only we can use this object storage. However, we must format it as an xfs File system
+Then create a directory for mounting it and provide the ownership for the swift user.
+echo "/dev/sdb1 /srv/node/sdb1 xfs noatime,nodiratime,nobarrier,logbufs=8 0 0" >> /etc/fstab
+
+Create a new directory in the name of sdb1 as follows 
+
+mkdir -p /srv/node/sdb1
+
+Provide the read ownership for the node as follows 
+chown -R swift:swift /srv/node
+Creation of Directories 
+Then we need to create some other directories for the swift as follows
+mkdir -p /var/swift/recon
+chown -R swift:swift /var/swift/recon
+
+Create a new directory in the name of swift and provide change ownership to read the file as follows 
+mkdir /home/swift
+chown -R swift:swift /home/swift
+ Replication data on storage nodes
+All the users of swift must resync to replicate data among the storage nodes using following command
+sudo gedit /etc/resync.conf
+
+Add the following changes in the above file 
+We must change the address to 192.168.1.37 for swift node_1, 192.168.1.38 for swift node_2 and 192.168.1.40 for swift node_3. 
+Then enable the RSYNC_ENABLE to be true. To make the value to be true by modifying the rsync file under /etc/default as follows 
+
+sudo gedit /etc/default/resync
+
+Then we restart the rsync service by using following command
+service rsync start
+
+Follow the above steps on both the nodes to complete the process.
+ Installation Swift Proxy 
+Once again, we install these components on all the swift nodes such as swift node_1, swift node_2 and swift node_3.
+sudo apt-get install swift-proxy memcached python-keystoneclient python-swiftclient python-webob
+
+Configuration of memcache
+Then we configure the memcached file to listen with the local IP address ( in this case the IP is 192.168.1.37) 
+sudo gedit /etc/memcached.conf
+
+Change the listening address to VIP as follows
+Then restart the memcached with following command
+service mecached restart
+
+Creation of proxy configuration file
+The configuration file will be creating with following command 
+sudo gedit /etc/swift/proxy-server.conf
+
+Then make the following changes in that file
+Configuration of Swift Ring
+In this step, we create swift ring configuration and then add our storage locations. We need to copy the file from /etc/swift to other two swift nodes (Swift node_2 and Swift node_3) with following command 
+scp -r *.ring.gz root@192.168.1.38:/etc/swift 
+
+
+
+scp -r *.ring.gz root@192.168.1.42:/etc/swift
+
+Then restart all the swift services using  following command
+swift-init restart all 
+
+
+Load Balancing Object Store
+Finally add the all these swift to the load balancer configuration. To do this we need to edit the haproxy.cfg file under /etc/haproxy/ using following command
+sudo gedit /etc/haproxy/haproxy.cfg
+
+Haproxy.cfg file need to be edited as follows 
+To changes has to take effect only after reload the haproxy configuration using following command
+sudo service haproxy reload 
+
+ Then check for the high availability swift service use the following command 
+sudo swift stat
+
+However, we must source some of the environmental variables as follows 
+export OS_USERNAME=admin
+export OS_PASSWORD=password
+export OS_TENANT_NAME=admin
+export OS_AUTH_URL=http://192.168.1.32:35357/v2.0
+
+On successful, run the following command 
+ swift stat,
+
+
+---------------------------------------------------------------------
+High Availability Image Services
+------------------------------------------------------------------------
+In this high availability glance, service is acting as back end storage for the object storage called swift. Image service is used to store the images in a shared manner.
+
+Installation of Image Service
+
+As an initial step of this installation, we have to install python glance client using
+sudo apt-get install glance python-glanceclient
+Configuration image service 
+We need to modify several image service files for this implementation. The first file we must modify is glance-api.conf available under /etc/glance/ using following command
+sudo gedit /etc/glance/glance-api.conf 
+
+We changed our virtual IP for swift, database and authentication. 
+Then we need to modify the next file called glance-registry.conf available under /etc/glance using following command 
+
+sudo gedit /etc/glance/glance-registry.conf 
+
+Then the below changes to be done in the above file 
+Then the next file to be edited is glance-cache.conf file available under /etc/glance using following command 
+
+sudo gedit /etc/glance/glance-cache.conf
+
+Then the below changes to be done in the above file 
+Creation of Glance Database
+
+Create a new database and grant all the privileges with the following commands on the mysql terminal. 
+mysql -h 192.168.1.32 -u root –p
+create database glance character set utf8 collate utf8_general_ci;
+
+
+
+
+grant all on glan
+ce.* to glance@'%' identified by 'Service123';
+
+
+flush privileges;
+
+
+exit
+
+Population of Databases
+Populate fresh new tables with some data on any node using following command
+sudo glance-manage db_sync
+
+Then restart the glance service using following commands
+sudo service glance-api restart
+
+
+sudo service glance-registry restart
+ Load balancing Image service
+
+For this Load balancing, we need to edit haproxy.cfg file under /etc/haproxy/ using following command 
+sudo gedit /etc/haproxy/haproxy.cfg
+
+Then to edit the file for the following changes 
+
+
+To make the above changes we need to reload the haproxy with following command
+
+sudo service haproxy reload 
+
+Hence, we load balanced glance service backed with swift storage .For testing we can add a new image to the glance service as follows
+
+wget http://download.cirros-cloud.net/0.3.1/cirros-0.3.1-x86_64-disk.img
+glance image-create --name cirros --is-public=true --disk-format=qcow2 --container-format=ovf < cirros-0.3.1-x86_64-disk.img
+
+
+
+glance image-list
+
+
+------------------------------------------------------------------------
+Load balancing of HTTP REST API
+-------------------------------------------------------------------------
+Here we consider the Python based module acting as web server that is running on two different instances (web_1 and web_2) on the OpenStack infrastructure. Basic index.html file is running on these nodes act as Sample HTTP application.
+Creation of Load balancing pool
+IP Pool is created as follows in the name of Ib_pool_1
+
+
+Provider = haproxy - default Option  
+Subnet = 10.10.10.0/24 – This attribute is an subnet used to attached the instances to the subnet and for load balance 
+Protocol = HTTP - We can have other options also
+Load Balancing Method = ROUND_ROBIN  - We can have other options also.
+
+Adding of Virtual IP (VIP)
+All the running servers of baked with this Virtual IP (VIP). This VIP setting is done as follows.
+
+
+Name = vip_1 – name of VIP 
+Specify a free IP = 10.10.10.254 – It is used as VIP 
+Protocol Port = 80 – Via this ports only VIP are listening and it must match with the incoming request 
+Protocol = HTTP - We can have other options also
+Instances launching 
+
+There are two instances running as following. The two instances (web_1 and Web_2) are running via horizon services of OpenStack.
+
+Security group creation
+
+The SSH and HTTP access is given to the launched instances and security group must be configured as follows.
+
+Adding Members to the Load balancing Pool 
+
+The Add Members interface will show the launched instances as follows 
+
+
+Pool = lb_pool_1 – Load balancing pool name
+Members = Two instances (web_1 and web_2)
+Protocol Port = 80 - port between the VIP and the other member servers. This must be matched with the listening port of the instance 
+Setting of Sample Web Server
+
+To get the list of the instances using following command 
+
+nova list 
+
+
+SSH into the first instance (web_1) using following command
+sudo ip netns exec qrouter-e9c35b5e-1778-431c-8b86-5f1a45dfafa9 ssh fedora@10.10.10.2
+
+
+To create a basic index.html file on the first instance (web_1) use the following command
+Sudo –i
+Cat > index.html
+
+SSH into the first instance (web_2) using the following command 
+sudo ip netns exec qrouter-e9c35b5e-1778-431c-8b86-5f1a45dfafa9 ssh fedora@10.10.10.4
+
+To create a basic index.html file on the first instance (web_2) use the following command
+Sudo –i
+Cat > index.html
+
+To run the Python Simple Server (HTTP server) module that comes with an instance (Fedora) On web_1 run the following command
+Python -m
+
+On web_2 run the following command
+Python -m
+
+Validate the Web Servers with index.html
+
+Run the index.html with WGET command and ensure that the VIP is listening and cab be used for load balancing on each instance.
+On web_1 , we need to run the following command 
+sudo ip netns exec qrouter-e9c35b5e-1778-431c-8b86-5f1a45dfafa9 wget -O - http://10.10.10.254
+
+
+On web_2 , we need to run  the following command
+sudo ip netns exec qrouter-e9c35b5e-1778-431c-8b86-5f1a45dfafa9 wget -O - http://10.10.10.254
+
+
+
+

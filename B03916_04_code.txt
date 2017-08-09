@@ -1,0 +1,227 @@
+
+
+
+4. Clustering, fencing and Active/Passive services
+
+In this chapter, we will cover the following main topics:
+•	Installation of Corosync and Pacemaker
+•	Load balancing of High Availability MySQL 
+•	High Availability RabbitMQ via AMQP
+
+----------------------------------------------------------------------------------------------
+Installation of Corosync and Pacemaker
+-----------------------------------------------------------------------------------------------
+
+
+Before going to install Corosync and Pacemaker, we should know the prerequisites for this experimental setup.
+Requirement for experimental setup 
+In this experiment, we have set up two node clusters with Ubuntu 12.04 LTS installed on both these two nodes. These two nodes are created in the name of conteroller_1 and controller_2 an assigned with IP addresses 192.168.56.101 and 192.168.56.102 respectively. Then the third IP address 192.168.1.32 is allocated to be used as a virtual IP address (VIP).
+
+Secure Socket Host setup 
+We can have SSH (Secure Socket Host) setup to access all other nodes through key exchange so that the hosts file on the node should look like as follows. 
+|sudo nano /etc/hosts
+
+Corosync Package Installation 
+To make any host node to be a part of pacemaker cluster, we need to establish a cluster communication via corosync that involves the installation of the following packages. 
+ |sudo apt-get install pacemaker corosync crmsh –y
+Sharing and Generation of corosync Keys
+As an initial step of installation, the corosync key must be generated and shared among all other nodes in the cluster.
+| corosync-keygen
+
+
+Share the keys with node2 (controller_2)
+
+rsync -a /etc/corosync/authkey controller_2:/etc/corosync/
+
+Creation of Configuration File
+Then we need to create a configuration for of corosync that is located in /etc/corosync/corosync.conf. To edit this file use any of the editors in ubuntu (vi, nano or gedit etc.,). 
+Sudo nano /etc/corosync/corosync.conf
+The cluster name and IP addressed must be changed according to our setup as follows
+ The log file must be created for logging the details about the cluster. In this step, we create a directory in the name of cluster and create a log file as follows.
+
+Starting corosync 
+
+Start the corosync service as normal system service as follows. To ensure the corosync connectivity, we will have a couple of tools corosync-ctgtool and corosync-objctl.The corosync-ctgtool is used to check the healthiness of the cluster.
+| sudo /etc/init.d/corosync start
+
+corosync-objctl will list down the member list as follows 
+
+corosync-objctl runtime.totem.pg.mrp.srp.members
+
+Starting pacemaker
+After corosync have started, the communication must be established to check the cluster is communicating properly. Then start the pacemaker with the following commands 
+
+Sudo nano /etc/init.d/pacemaker start 
+
+On successful start of Pacemaker services, it will create an empty cluster configuration by default. This cluster does not have any resources. We can check the status of this cluster using crm utility on the terminal
+|crm_mon 
+
+Setting Cluster Properties 
+Basic cluster properties need to be set for the pacemaker cluster with the help of crm shell. The configuration file is changed with configure command. Following are some cluster properties.
+no-quorum-policy="ignore" – Setting this attribute value to be ignore is used when we are using 2 nodes cluster (in our case). If we set this value, both of the nodes are remain online and lose communication with one another. This value will be setting up when we use more than 3 or more nodes in the cluster. 
+pe-warn-series-max =”1000”, pe-input-series-max =”1000” & pe-error-series-max=”1000” –Setting these values to 1000 requests the pacemaker to sustain a long history of inputs that is processed by this cluster.  
+cluster-recheck-interval="5min" – Setting this value to processing a cluster state uses event driven approach. It is used to make the pacemaker actions occur at customizable intervals. We can change this value or interval to be small according to the cluster requirement.
+| crm-configure
+
+
+---------------------------------------------------------------------------------------------------------------
+Load balancing of High Availability MySQL 
+-------------------------------------------------------------------------------------------------------------
+
+
+Many of the OpenStack services are using MySQL is the default database server. To make this MySQL database server to high availability involves the configuration of DRDB as follows.
+DRBD Replicated Storage
+Replications of the data between disks are done with DRDB. In our case, the disk /dev/sdb on controller_1 and controller_2. We need to edit the configuration file of DRDB with the following command.
+sudo gedit /etc/drbd.conf
+
+The Configuration file is looks like as follows 
+
+After that, we have to enter some of the DRBD commands to initialization of the replicas as follows
+drbdam create-md mysql
+
+On executing the above command, we will get the initial device creation.
+Then we need to start replication on any one of the node either on controller_1 or controller_2 using the command as follows. 
+drbdam -- --force primary mysql
+
+Now the replication has started. Then we need to check the status of the replication as follows
+cat /proc/drbd
+Installing MySQL
+The installation should be done on both nodes (controller_1 and controller_2) as follows
+sudo apt-get install mysql-server
+
+
+Then we will add our Virtual IP (VIP) to the my.cnf as follows.
+sudo gedit /etc/my.cnf
+
+bind-address = 192.168.1.32
+ Add MySQL resources to Pacemaker
+Then we add the configuration of pacemaker for MySQL resources in the cluster. With crm configure connect the Pacemaker cluster and add the following cluster resources:
+primitive p_ip_mysql ocf:heartbeat:IPaddr2 \
+  params ip="192.168.1.32" cidr_netmask="24" \
+  op monitor interval="30s"
+primitive p_drbd_mysql ocf:linbit:drbd \
+  params drbd_resource="mysql" \
+  op start timeout="90s" \
+  op stop timeout="180s" \
+  op promote timeout="180s" \
+  op demote timeout="180s" \
+  op monitor interval="30s" role="Slave" \
+  op monitor interval="29s" role="Master"
+primitive p_fs_mysql ocf:heartbeat:Filesystem \
+  params device="/dev/drbd/by-res/mysql" \
+    directory="/var/lib/mysql" \
+    fstype="xfs" \
+    options="relatime" \
+  op start timeout="60s" \
+  op stop timeout="180s" \
+  op monitor interval="60s" timeout="60s"
+primitive p_mysql ocf:heartbeat:mysql \
+  params additional_parameters="--bind-address=192.168.42.101" \
+    config="/etc/mysql/my.cnf" \
+    pid="/var/run/mysqld/mysqld.pid" \
+    socket="/var/run/mysqld/mysqld.sock" \
+    log="/var/log/mysql/mysqld.log" \
+  op monitor interval="20s" timeout="10s" \
+  op start timeout="120s" \
+  op stop timeout="120s"
+group g_mysql p_ip_mysql p_fs_mysql p_mysql
+ms ms_drbd_mysql p_drbd_mysql \
+  meta notify="true" clone-max="2"
+colocation c_mysql_on_drbd inf: g_mysql ms_drbd_mysql:Master
+order o_drbd_before_mysql inf: ms_drbd_mysql:promote g_mysql:start
+
+
+Once the configuration has been committed, the cluster will bring up the resources, and if all goes well, you should have MySQL running on one of the nodes, accessible via the VIP address. If any communication loss occurred on any of the active nodes in a cluster will be removed or fenced from the cluster. By this fencing, mechanism the fenced node is completed isolated from the cluster.
+To check the cluster status, type the following command: 
+| crm_mon -1
+
+
+---------------------------------------------------------------------------------------------------------
+High Availability RabbitMQ via AMQP 
+
+------------------------------------------------------------------------------------------------------------
+The AMQP server is used as a default server for many OpenStack services through RabbitMQ. Making the service to be high available involves configuring a DRDB device. 
+Configuration of DRDB 
+The configuration DRDB involves the following 
+
+RabbitMQ can use the configured the DRDB device
+Data Directory residing at this RabbitMQ device can be used by this configuration.  
+Virtual IP (VIP) is selecting and assigning for freely among the cluster nodes as a floating IPs.
+
+The RabbitMQ DRDB resource configuration is done through as follows.
+sudo nano /etc/drbd.d/rabbit.res 
+
+The rabbitmq directory is mounts from the DRDB resource for pacemaker based rabbirmq server. The rabbitmq resource is configured as follows 
+Backing device named /dev/data/rabbitmq is used by the above resource on the cluster nodes, controller_1 and controller_2.We create an initial device with the following commands to write the initial set of metadata to the rabitmq device under the above-specified directory.
+drbdadm create-md rabbitmq
+
+Create a file system
+
+On successful running of DRDB resource, create a file system for the data in the RabbitMQ. So-called is a primary running process.
+mkfs  -t xfs /dev/drbd1
+
+Since the resource name is self-explanatory, we would use an alternative device path for an intial device of DRDB using 
+mkfs –t xfs /dev/drbd/by-res/rabbitmq
+
+
+For the device to return to the secondary running process on the cluster using following command 
+drbdadm secondary  rabbitmq
+Prepare RabbitMQ for Pacemaker high availability
+We need to check for the erlang.cookie files on both the controller_1 and controller_2 to be an identical to ensure the Pacemaker monitoring functionality. So that, erlang.cookie file is copied from node to our nodes, RabbitMq data directory and to DRDB file system as follows. 
+
+For Copy the erlang.cookie file from one to other node
+scp –p /var/lib/rabbitmq/.erlang.cookie controller_2:/var/lib/rabbitmq/
+
+For mounting a rabbitmq directory use the following command
+mount /dev/drbd/by-res/rabbitmq /mnt
+
+For copying a erlang.cookie to mount on a new device, use the following command 
+sudo cp –a /var/lib/rabbitmq/.erlang.cookie /mnt
+
+Finally for unmounting an added directory as follow
+sudo unmount /mnt 
+
+Add RabbitMQ resources to Pacemaker
+
+Now we add pacemaker configuration to the RabbitMq resources.crm tool is used to configure and add the following lines into the cluster resources as follows.
+| crm configure
+Type the above command on the terminal followed by addition the following code 
+primitive p_ip_rabbitmq ocf:heartbeat:IPaddr2 \
+  params ip="192.168.1.32" cidr_netmask="24" \
+  op monitor interval="10s"
+primitive p_drbd_rabbitmq ocf:linbit:drbd \
+  params drbd_resource="rabbitmq" \
+  op start timeout="90s" \
+  op stop timeout="180s" \
+  op promote timeout="180s" \
+  op demote timeout="180s" \
+  op monitor interval="30s" role="Slave" \
+  op monitor interval="29s" role="Master"
+primitive p_fs_rabbitmq ocf:heartbeat:Filesystem \
+  params device="/dev/drbd/by-res/rabbitmq" \
+    directory="/var/lib/rabbitmq" \
+    fstype="xfs" options="relatime" \
+  op start timeout="60s" \
+  op stop timeout="180s" \
+  op monitor interval="60s" timeout="60s"
+primitive p_rabbitmq ocf:rabbitmq:rabbitmq-server \
+  params nodename="rabbit@localhost" \
+    mnesia_base="/var/lib/rabbitmq" \
+  op monitor interval="20s" timeout="10s"
+group g_rabbitmq p_ip_rabbitmq p_fs_rabbitmq p_rabbitmq
+ms ms_drbd_rabbitmq p_drbd_rabbitmq \
+  meta notify="true" master-max="1" clone-max="2"
+colocation c_rabbitmq_on_drbd inf: g_rabbitmq ms_drbd_rabbitmq:Master
+order o_drbd_before_rabbitmq inf: ms_drbd_rabbitmq:promote g_rabbitmq:start
+
+
+The above configuration file created the following important changes in the cluster.
+
+p_ip_rabbitmq - The RabbitMQ will use the Virtual IP address
+p_fs_rabbitmq - A file system is mounted on the node where RabbitMQ is currently running.
+ms_drbd_rabbitmq  - The rabitmq DRDB service is managed by the master/slave set
+Other constraints such as service group, order, and collocation is used to ensure that all the resources are started at each node properly and in the correct sequence.
+| crm configure 
+
+ After all the changes using crm configure, we commit the configuration by entering commit command.
+| commit

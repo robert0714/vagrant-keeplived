@@ -1,0 +1,90 @@
+------------------------------------------------------------------------------
+Installation of MariaDB with Galera clustering
+----------------------------------------------------------------------------------
+1.   Login with the default user name and password as admin and openstack.
+
+2.    Then add the MariaDB repo and install the MariaDB and Galera packages on the control nodes with the following procedure 
+o	 Open a Terminal in the controller node 
+o	 Type the following commands for the installation
+	sudo apt-get install python-software-properties
+
+o	Type the following command 
+
+sudo apt-key adv --recv-keys --keyserver hkp://keyserver.ubuntu.com:80 0xcbcb082a1bb943db
+
+o	Add the following lines to the bottom of your /etc/apt/sources.list file.
+
+deb http://sgp1.mirrors.digitalocean.com/mariadb/repo/5.5/ubuntu precise main
+deb-src http://sgp1.mirrors.digitalocean.com/mariadb/repo/5.5/ubuntu precise main
+
+Now type the following command 
+sudo  apt-get update
+
+3.   Installation of MariaDB 
+    Type the following command 
+sudo apt-get install mariadb-server
+
+4.      After successful installation of MariaDB, the galera configuration file needs to be changed according to our cluster setup as follows.
+o	Find a file called cluster.conf under  /etc/mysql/conf.d/cluster.cnf
+o	Add the following lines into the file (cluster.cnf) with a command 
+sudo nano /etc/mysql/conf.d/cluster.cnf . 
+o       wsrep_cluster_address to match the address of our node called controllerNode1 (192.168.122.1) 
+
+o      Finally, we need to edit the MySQL configuration to remove the bind-address statement as follows. The configuration file called my.conf resides under /etc/mysql. We need to comment the bind-address attribute in the file using a command 
+
+sudo nano  /etc/mysql/my.conf
+
+5.  Complete all of the above steps on both nodes, and then we should stop the mysql service on both nodes with  fowling command 
+service mysql stop
+
+
+
+----------------------------------------------------------------------------------------------
+
+Installation of high availability RabbitMQ cluster 
+
+------------------------------------------------------------------------------------------------
+
+Step 1: Make the controllers to know each other
+Change on the Controller_1 (/etc/hosts)
+1. Add the name of name and IP address of the controller_2 using the following command
+sudo  nano /etc/hosts
+
+2. Then save the above changes done 
+3. Change on the Controller_2 (/etc/hosts)
+4. Add the name of name and IP address of the controller_2 using the following command
+sudo  nano /etc/hosts
+5.Then save the above changes done 
+
+Step 2: Installation of Rabbit MQ on the above two nodes
+The following procedure must be follow for both the node 
+1.Update the system with following command
+sudo apt-get update 
+2. Install the RabbitMQ message queue service on the node with following command 
+sudo apt-get install ntp rabbitmq-server
+3. After the installation has completed the we should stop the RabbitMQ services on both the nodes with  following command
+sudo service rabbitmq-server stop
+
+Step 3: Construction of RabbitMQ Broker  
+To enable root logon on controller_2, simply type: passwd root and enter a new password for root when prompted.
+Then back on controller_ 1, we can copy the cookie to controller_2: with following command
+scp /var/lib/rabbitmq/.erlang.cookie root@192.168.56.101:/var/lib/rabbitmq/.erlang.cookie
+
+Step 4: Restart the rabbitmq services on both the nodes with following command
+Type the following command 
+sudo service rabbitmq-server restart
+
+Step 5: Add the following attributes on controller_2 to form a cluster
+Run the following commands on terminal of the controller_2
+rabbitmqctl stop_app
+rabbitmqctl join_cluster rabbit@controller_1
+rabbitmqctl start_app
+
+Step 6: Check the status of the cluster 
+Run the following command to know the status of the cluster from the controller_1
+Sudo rabbitmqctl cluster status
+
+
+
+
+

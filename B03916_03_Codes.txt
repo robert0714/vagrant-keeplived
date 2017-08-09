@@ -1,0 +1,71 @@
+3. Load balancing for Active/Active services
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+Installation of HAProxy and Keepalived
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+In this experiment, you have to setup two node cluster with Ubuntu 12.04 LTS installed on both these two nodes. These two nodes are created in the name of conteroller_1 and controller_2 an assigned with IP address 192.168.56.101 and 192.168.56.102 respectively. 
+Then the third IP address 192.168.1.32 is allocated to use as a virtual IP address (VIP).
+
+The following is the step by step procedure to install the HAproxy and Keepalived 
+1.	As an initial step of this installation process, we need to make the kernel know that we intend to bind additional IP addresses that won’t be defined in the interfaces file.  
+
+2.	To do that we edit /etc/sysctl.conf using any one of the editors as said in the previous chapter 
+
+3.	Then add the following line 
+net.ipv4.ip_nonlocal_bind=1
+
+
+4.	To reflect the change made in the file is done by the below command without reboot the machines
+sudo sysctl -p
+  
+5.	Next you will install HAproxy and Keepalived software by using the command
+sudo apt-get update && apt-get install keepalived haproxy –y
+
+6.	After successful installation of the above softwares, you will get the following screenshot. 
+7.	Next, we define the keepalived configuration by creating the following file:
+/etc/keepalived/keepalived.conf on both the controller_1 and controller_2 as follows
+
+On controller_1  
+o	Add the following items to the keepalived.conf file  and  you have set the router_id to be the hostname in this case controller_1
+o	Then you have to specified the VIP as 192.168.1.32
+
+On controller_2  
+o	Add the following items to the keepalived.conf file  and  you have set the router_id to be the hostname in this case controller_2
+o	Then you have to specified the VIP as 192.168.1.32
+8.	Next, you have to define the HAProxy configuration on controller_1 and controller_2 as follows:
+Open the file called haproxy.cfg under /etc/haproxy/ directories using any editor with the following command 
+sudo gedit /etc/haproxy/ haproxy.cfg
+
+On controller_1  
+o	In this file, change the IP address of the log location item in the global section and in the stats listener to controller_1 IP address as 192.168.56.101.
+o	Then the username and password in the status auth line.  Set the password and username according to your machine.
+
+On controller_2  
+o	In this file, change the IP address of the log location item in the global section and in the stats listener to controller_2 IP address as 192.168.56.102.
+o	Then the username and password in the status auth line.  Set the password and username according to your machine.
+9.	Now you will define the HAProxy on both the nodes (controller_1 and controller_2) using the command 
+sudo gedit /etc/default/haproxy
+
+10.	Now we need to enable HAProxy.  To do this, edit the file /etc/default/haproxy.
+The default value of the ENABLED attribute value is changed to 1 as follows.
+
+11.	Then restart the services of haproxy and keepalived on both the nodes (controller_1 and controller_2) using the command
+sudo service keepalived restart
+sudo service haproxy restart
+
+12.	After completed all of these steps on both nodes, you should now have a highly available load balancer pair.  At this point, our VIP should be active on one node. 
+
+On Controller_1 
+o	 In this case, built on controller_1 first, it should be active on that node.  To confirm, we can use the following  ip command 
+
+ip a | grep eth4 (in this case eth4 is assigned as main NIC)
+
+
+On Controller_2 
+o	In this case, built on controller_2 first, it should be active on that node.  To confirm, we can use the ip command
+
+ip a | grep eth4 (in this case eth4 is assigned as main NIC)
+
+
+
+Notice that both the local IP and the VIP are shown. If we now reboot node 1then node 2 will quickly pick up the VIP.
+Therefore, we should ensure that, the Virtual IP is present on any one of the nodes such as controller_1 or controller_2 since VIP should be active on either controller_1 or controller_2.

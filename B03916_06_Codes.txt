@@ -1,0 +1,169 @@
+
+6
+Distributed Networking
+
+------------------------------------------------------------------------------
+Installation of high availability Distributed Virtual Routing (DVR) 
+-----------------------------------------------------------------------------
+Control Node setup
+-------------------
+Following is the procedure for control note setup
+•	SQL server with neutron DB and neutron server.conf file must be configured 
+•	The message queue service and neutron-server.conf file configuration must be done according to the message queue server.
+•	Configuration must be done in the neutron-server.conf file according to the OpenStack Identity service. 
+•	Nova.conf file is also configured for adopting the OpenStack compute services and neutron server service and ML2 plug-in and its dependencies 
+
+Disable reverse path filtering
+
+The kernel needs to be configured to disable the reverse path filtering by editing the file under /etc directory using any one of the editors (such as vi, nano and gedit etc.,) and change the values of the attributes net.ipv4.conf.default.rp_filter and net.ipv4.conf.all.rp_filter to zero.
+
+| sudo gedit /etc/sysctl.conf
+
+
+ Loading of new kernel 
+
+The new kernel must be loaded with a help of configuration of the kernel file as follows.
+| sudo sysctl -p
+
+Configuration of Neutron
+
+ We need to configure the neutron file by changing the following base configurations using a neutron.conf file under /etc/neutron
+
+| sudo gedit /etc/neutron/neutron.conf
+
+Configuration ML-2 plug-in 
+
+We have to change the VLAN and VXLAN according to our environment as follows
+Restart the servers 
+
+Restart the services to made the changes over the servers using following command
+
+| sudo service openstack-neutron restart
+
+----------------------------
+Network Node setup
+-----------------------------
+Following is the procedure for network note setup
+•	Configuration must be done in the neutron-server.conf file according to the OpenStack Identity service. 
+•	ML2 plug-in, L3 agent, Open vSwitch agent, metadata agent, Open vSwitch service,  DHCP agent, and dependencies.
+
+Packet forward enabling and Disable reverse path filtering 
+The kernel needs to be configured to disable the reverse path filtering and enabling packet forwarding by editing the file under /etc/ directory using any one of the editors (such as vi, nano and gedit etc.,) and change the values of the attributes net.ipv4.conf.default.rp_filter and net.ipv4.conf.all.rp_filter to zero then change the value to 1 of an attribute called net.ipv4.ip_forward.
+
+Edit the /etc/sysctl.conf file using following command
+
+| sudo gedit /etc/sysctl.conf
+
+
+Loading of new kernel 
+
+The new kernel must be loaded with a help of configuration of the kernel file as follows.
+
+| sudo sysctl -p
+
+Configuration of Neutron
+
+ We need to configure the neutron file by changing the following base configurations using a neutron.conf file under /etc/neutron 
+
+| sudo gedit /etc/neutron/neutron.conf
+
+Configuration ML-2 plug-in 
+Configure the ML2 plug-in by using one of the editors vi, nano and gedit as follows
+
+| sudo gedit /etc/neutron/plugins/ml2/ml2_conf.ini 
+
+We have to change the VLAN and VXLAN according to our environment as follows
+Configure the L3 agent
+Configure the L3 agent by editing using one of the editors as follows and change the  external_network_bridge option will have no value.
+
+| sudo gedit /etc/neutron/l3_agent.ini
+
+Configure the DHCP agent
+
+Configure the DHCP agent by editing using one of the editors as follows 
+
+| sudo gedit /etc/neutron/dhcp_agent.ini
+
+
+Configure the metadata agent
+
+Configure the metadata agent by editing using one of the editors as follows and change the METADATA_SECRET value according to our environment.
+
+| sudo gedit /etc/neutron/metadata_agent.ini
+
+Then change the METADATA_SECRET with a suitable value according to our environment 
+Restart services
+
+Then the services (Open vSwitch, Open vSwitch agent, L3 agent, DHCP agent, Metadata agent and neutron) are restarted as follows to reflect the changes as follows. 
+
+| sudo service neutron-server restart
+| sudo service neutron-dhcp-agent restart
+| sudo service neutron-l3-agent restart
+| sudo neutron-metadata-agent restart
+| sudo service neutron-openvswitch-agent restart
+
+------------------------------------------------------
+Compute Node Setup
+--------------------------------------------------------
+
+Following is the procedure for compute node setup
+•	Configuration must be done in the neutron-server.conf file according to the OpenStack Identity service. 
+•	Configuration must be done in the neutron-server.conf file according to the openstack computer hypervisor service.
+•	ML2 plug-in, L3 agent, Open vSwitch agent, metadata agent, Open vSwitch service, DHCP agent, and dependencies.
+
+Packet forward enabling and Disable reverse path filtering 
+
+The kernel needs to be configured to disable the reverse path filtering and enabling packet forwarding by editing the file under /etc/ directory using any one of the editors (such as vi, nano and gedit etc.,) and change the values of the attributes net.ipv4.conf.default.rp_filter and net.ipv4.conf.all.rp_filter to zero then change the value to 1 of an attribute called net.ipv4.ip_forward.
+
+Edit the /etc/sysctl.conf file using following command 
+
+| sudo gedit /etc/sysctl.conf
+
+Loading of new kernel 
+
+The new kernel must be loaded with a help of configuration of the kernel file as follows.
+
+| sudo sysctl -p
+
+Configuration of Neutron
+
+ We need to configure the neutron file by changing the following base configurations using a neutron.conf file under /etc/neutron
+
+| sudo gedit /etc/neutron/neutron.conf
+
+And change the value of router_distributed = true
+Configuration ML-2 plug-in 
+
+Configure the ML2 plug-in by using one of the editors vi, nano and gedit as follows 
+
+| sudo gedit /etc/neutron/plugins/ml2/ml2_conf.ini 
+
+We have to change the VLAN and VXLAN according to our environment as follows
+
+Configure the L3 agent
+
+Configure the L3 agent by editing using one of the editors as follows and change the  external_network_bridge option will have no value.
+
+| sudo gedit /etc/neutron/l3_agent.ini
+
+Configure the metadata agent
+
+Configure the metadata agent by editing using one of the editors as follows and change the METADATA_SECRET value according to our environment as follows 
+
+| sudo gedit /etc/neutron/metadata_agent.ini
+
+Then change the METADATA_SECRET with a suitable value according to our environment 
+
+ Restart services
+
+Then the services (Open vSwitch, Open vSwitch agent, L3 agent, Metadata agent) are restarted as follows to reflect the changes as follows. 
+| sudo service neutron-server restart
+| sudo service neutron-l3-agent restart
+| sudo neutron-metadata-agent restart
+| sudo service neutron-openvswitch-agent restart
+
+Verification of service operation
+
+Presence and operations of the agents are verified with following command 
+
+| sudo neutron agent-list

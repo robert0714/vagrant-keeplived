@@ -1,0 +1,120 @@
+7
+
+Shared Storage 
+---------------------------------------------------------------------------------
+Installation of GlusterFS
+---------------------------------------------------------------------------------
+Configuration of GlusterFS for Block Storage 
+Following are the steps for configuration of GlusterFS
+
+Installation of GlusterFS
+Following command must be typed on the terminal to install a GlusterFS
+| sudo apt-get install glusterfs-server
+
+Then ensure that GlusterFS was properly installed on two nodes (controller_1 and controller _2) using following  command 
+| sudo glusterfs –version
+
+On successful installation, we will get the following result 
+Configuration of nodes for communication 
+Now both the server wants to communicate each other by editing the entries in the /etc/hosts using 
+| sudo gedit /etc/hosts
+
+Now we need to run the following command on both the nodes
+
+| Sudo gluster peer probe gluster1
+| Sudo gluster peer probe gluster2
+ 
+On successful communication of these nodes we will ensure that the Gluster nodes are properly communicating with each other. 
+Status of Peers
+Then we have to check the status of peers on two severs using as follows. On server 1, we have to check the peer status  by following command
+| sudo gluster peer status
+
+On server 2 , we have to check the peer status by following command 
+
+| sudo gluster peer status
+
+Number of Peers: 1
+Hostname: gluster2
+Port: 24007
+Uuid: 5c5a045c-34b9-44ac-b5c0-8acb461d8523
+State: Peer in Cluster (Connected)
+
+Creation of Data Point 
+
+As an initial step of data appoint creation, we need to create a new directory called gluster under a directory by following command 
+| sudo mkdir -p /mnt/gluster
+
+Then we have to create a volume in which we will have all other data resides. This volume is called as data point. After that, we will run the following command on the machines (Servers). 
+
+| sudo gluster  volume create datapoint replica 2 transport tcp  gluster1:/mnt/gluster  gluster2:/mnt/gluster
+
+Start of Volumes 
+Then we start the data point volume services using following command 
+
+| sudo gluster volume start datapoint
+
+
+Finally we have to run the commands to ensure that the GlusterFS is up and running using ps on both of the nodes (Controller_1 an Controller_2)
+| sudo ps aux | grep gluster
+
+
+To make sure of the availability of the volumes run the following Gluster command 
+
+| sudo gluster volume info
+
+
+
+
+--------------------------------------------------------------------------------------------------
+Introduction to Ceph 
+--------------------------------------------------------------------------------------------------
+
+Installation of Ceph 
+
+Following are the steps for installing Ceph 
+Installation of Openssh
+
+Openssh is installing using the command 
+
+| sudo aptitude -y install openssh-server
+
+Then provide the required privileges to the ceph using following command
+
+| sudo chmod 440 /etc/sudoers.d/ceph
+
+Connect to Ceph Node
+
+Ssh pair is created and sends to connect to ceph nodes using non-passphrase using sudo ssh-keygen. Then Configuration file of .ssh file is to be edited as follows 
+
+| sudo vi ~/.ssh/config
+
+Then send the ssh key to the ceph nodes as follows 
+
+Send this key for all other nodes using the following commands 
+
+| sudo ssh-copy-id ceph02
+| sudo ssh-copy-id ceph02
+
+ Configure Ceph Node
+
+Ceph configuration must be done on the servers as follows 
+
+| sudo aptitude -y install ceph-deploy ceph-common ceph-mds
+
+Configure Storage Node 
+
+Then we configure the storage node on the server. In our scenario, we have to create directories /storage01, /storage02 and /storage03 on all the nodes ceph01, ceph02 and ceph03 as follows 
+
+| sudo  ceph-deploy osd prepare ceph01:/storage01 ceph02:/storage02 ceph03:/storage03
+
+| sudo ceph-deploy osd activate ceph01:/storage01 ceph02:/storage02 ceph03:/storage03
+
+
+
+ Checking the status of Ceph
+
+ Finally, we check the status of the ceph with the following command
+
+ | sudo ceph mds stat
+
+
