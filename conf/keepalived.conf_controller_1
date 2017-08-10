@@ -15,7 +15,7 @@ vrrp_instance 50 {
   state MASTER
   interface eth4
   virtual_ipaddress {
-    192.168.1.32. dev eth4
+    192.168.1.32 dev eth4
   }
   track_script {
     haproxy
