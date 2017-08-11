@@ -1,4 +1,4 @@
-this config needs haproxy-1.1.28 or haproxy-1.2.1
+# :this config needs haproxy-1.1.28 or haproxy-1.2.1
 global
        # log /dev/log    local0
        # log /dev/log    local1 notice
