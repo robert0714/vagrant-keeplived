@@ -1,14 +1,14 @@
-this config needs haproxy-1.1.28 or haproxy-1.2.1
+# this config needs haproxy-1.1.28 or haproxy-1.2.1
 global
-        log /dev/log    local0
-        log /dev/log    local1 notice
+        #log /dev/log    local0
+        #log /dev/log    local1 notice
         chroot /var/lib/haproxy
         user haproxy
         group haproxy
         daemon
         log 192.168.56.102 local0
         stats socket  /var/lib/haproxy/stats
-        maxconn
+        maxconn 4000
 defaults
         log     global
         mode    http
@@ -30,5 +30,5 @@ listen stats 192.168.56.102:80
         stats enable
         stats uri /stats
         stats realm HAProxy\ Statistics
-        stats auth admin:openstack
+       # stats auth admin:openstack
 
