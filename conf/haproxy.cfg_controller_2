@@ -25,10 +25,30 @@ defaults
         errorfile 503 /etc/haproxy/errors/503.http
         errorfile 504 /etc/haproxy/errors/504.http
 
-listen stats 192.168.56.102:80
+listen stats :8080
         mode http
         stats enable
         stats uri /stats
         stats realm HAProxy\ Statistics
-       # stats auth admin:openstack
+
+
+
+# 設定 Web Cluster
+backend web_server_cluster
+    mode http
+    balance roundrobin
+    cookie SERVERID insert indirect nocache
+    # Web Server Cluster
+    server web1 192.168.57.19:80 check cookie s1
+    server web2 192.168.57.21:80 check cookie s2
+
+# Web 服務入口
+frontend switch
+    bind *:80
+    mode http
+    option httpclose
+    option forwardfor
+    reqadd X-Forwarded-Proto:\ https
+    default_backend web_server_cluster
+
 
