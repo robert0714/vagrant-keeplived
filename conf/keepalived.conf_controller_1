@@ -13,9 +13,9 @@ vrrp_instance 50 {
   advert_int 1
   priority 101
   state MASTER
-  interface eth4
+  interface eth1
   virtual_ipaddress {
-    192.168.1.32 dev eth4
+    192.168.56.103 dev eth1
   }
   track_script {
     haproxy
