@@ -22,7 +22,7 @@ Vagrant.configure(2) do |config|
 #         d.vm.provision :shell, path: "scripts/bootstrap4CentOs_ansible.sh"
 
       end 
-     d.vm.provision :shell, inline: " sudo apt-get update && apt-get install keepalived  -y  " 
+     d.vm.provision :shell, inline: " sudo apt-add-repository ppa:vbernat/haproxy-1.5 && apt-get update && apt-get install keepalived  -y  " 
     end
   end  
   if Vagrant.has_plugin?("vagrant-cachier")
