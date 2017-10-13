@@ -54,4 +54,13 @@ frontend switch
     reqadd X-Forwarded-Proto:\ https
     default_backend web_server_cluster
 
-
+# HAProxy 監控儀表板
+listen stats :8080
+    mode http
+    stats enable
+    stats hide-version
+    stats realm Haproxy\ Statistics
+    stats uri /
+    # 帳號密碼
+#    stats auth your_username:your_password
+    stats refresh 10s
