@@ -9,14 +9,13 @@ global
         log 192.168.56.102 local0
         stats socket  /var/lib/haproxy/stats
         maxconn 4000
+        #        tune.ssl.default-dh-param 4096 #TLS/SSL 專用
+
 defaults
         log     global
         mode    http
         option  httplog
         option  dontlognull
-        #  contimeout 5000  #  deprecated
-        #  clitimeout 50000  #  deprecated
-        #  srvtimeout 50000  #  deprecated
         timeout server 30s
         timeout connect 30s
         timeout client 30s
@@ -42,13 +41,13 @@ backend web_server_cluster
     balance roundrobin
     cookie SERVERID insert indirect nocache
     # Web Server Cluster
-    server web1 192.168.57.19:80 check cookie s1
     server web2 192.168.57.21:80 check cookie s2
 
 # Web 服務入口
 frontend switch
     bind *:80
-    mode http
+    # redirect scheme https code 301 if !{ ssl_fc }
+    mode http    
     option httpclose
     option forwardfor
     reqadd X-Forwarded-Proto:\ https
@@ -64,3 +63,12 @@ listen stats :8080
     # 帳號密碼
 #    stats auth your_username:your_password
     stats refresh 10s
+
+
+#frontend ssl_switch
+#    bind :443 ssl crt /etc/pki/CA/certs/server.pem ca-file /etc/pki/CA/certs/ca.crt verify required
+#    mode http
+#    option httpclose
+#    option forwardfor
+#    reqadd X-Forwarded-Proto:\ https
+#    default_backend server_cluster if { ssl_fc_has_crt }
