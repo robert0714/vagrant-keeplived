@@ -5,3 +5,11 @@ USAGE
 vagrant@k8s-3:~$ PYTHONUNBUFFERED=1 ansible-playbook /vagrant/ansible/playbook.yml  -i  /vagrant/ansible/hosts/all
 ```
 Ubuntu 16.04 LTS need to restart docker services manually
+
+
+#異常的502 Bad Ggateway處理方法
+================
+Had similar problem with proxy_pass, if your Linux server is using SELINUX then you may want to try this.
+setsebool -P httpd_can_network_connect true
+Refer to Warren's answer: https://unix.stackexchange.com/questions/196907/proxy-nginx-shows-a-bad-gateway-error
+
