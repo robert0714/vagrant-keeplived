@@ -1,1 +1,0 @@
-{"virtualbox":{"/vagrant":{"guestpath":"/vagrant","hostpath":"/home/weblogic/Desktop/tmp/vagrant-keeplived","disabled":false,"__vagrantfile":true},"vagrant-cache":{"id":"vagrant-cache","guestpath":"/tmp/vagrant-cache","hostpath":"/home/weblogic/.vagrant.d/cache/ubuntu/trusty64","disabled":false,"__vagrantfile":true}}}
