@@ -1,3 +1,18 @@
+# https://github.com/meonkeys/nginx-sticky-module-ng/releases/tag/1.2.6
+# http://nginx.org/download/nginx-1.12.2.tar.gz
+# modify the file "ngx_http_sticky_misc.c" in nginx-sticky-module-ng ,
+
+#include <nginx.h>
+#include <ngx_config.h>
+#include <ngx_core.h>
+#include <ngx_http.h>
+#include <ngx_md5.h>
+#include <ngx_sha1.h>
+#include <openssl/sha.h>
+#include <openssl/md5.h>
+
+#include "ngx_http_sticky_misc.h"
+
 export BUILD_DIR=/home/vagrant/nginx-1.12.2
 export NGINX_DIR=/etc/nginx
 export SBIN_DIR=/usr/sbin
