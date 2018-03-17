@@ -44,3 +44,9 @@ cd   ${BUILD_DIR}
 --with-http_realip_module  \
 --user=nginx  --group=nginx  \
 --add-module=/home/vagrant/nginx-sticky-module-ng-1.2.6
+
+
+#   vi   scripted.sh
+#   chmod +X scripted.sh 
+#   sudo yum install -y    pcre-devel openssl-devel   zlib-devel
+#   ./scripted.sh
