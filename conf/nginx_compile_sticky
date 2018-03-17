@@ -1,3 +1,4 @@
+# ./scripted.sh
 # wget  https://github.com/meonkeys/nginx-sticky-module-ng/archive/1.2.6.tar.gz
 # wget  http://nginx.org/download/nginx-1.12.2.tar.gz
 # modify the file "ngx_http_sticky_misc.c" in nginx-sticky-module-ng ,
